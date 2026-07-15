@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Axis of Symmetry — Fold & See!</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Arial', sans-serif;
+    background: linear-gradient(160deg, #fff7e6, #e6f7ff);
+    margin: 0; padding: 16px;
+    color: #2b2b3d;
+  }
+  h1 { text-align:center; color:#5b3aa0; font-size: 2.4em; margin-bottom:4px;}
+  .subtitle { text-align:center; color:#666; font-size:1.2em; margin-top:0; margin-bottom:18px;}
+  .intro {
+    max-width: 760px; margin: 0 auto 20px; background:#fff; border-radius:16px;
+    padding:16px 22px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); font-size:1.15em; line-height:1.6;
+  }
+  .intro b { color:#c0392b; }
+  .tabs { display:flex; justify-content:center; gap:10px; margin-bottom: 20px; }
+  .tab-btn {
+    padding:10px 24px; border:none; border-radius:30px; font-size:1.15em; cursor:pointer;
+    background:#ddd; color:#444; font-weight:bold; transition: all 0.2s;
+  }
+  .tab-btn.active { background:#5b3aa0; color:#fff; box-shadow:0 3px 8px rgba(91,58,160,0.4);}
+  .panel { display:none; max-width: 920px; margin: 0 auto; }
+  .panel.active { display:block; }
+
+  .selector { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-bottom:14px; }
+  .shape-btn {
+    width:72px; height:72px; border-radius:14px; border:3px solid #ccc; background:#fff;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:1.8em;
+    transition: all 0.15s; font-weight:bold; color:#444;
+  }
+  .shape-btn:hover { border-color:#5b3aa0; transform: translateY(-2px); }
+  .shape-btn.active { border-color:#e67e22; background:#fff5e6; }
+
+  .axis-selector { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-bottom:18px; }
+  .axis-btn {
+    padding:8px 16px; border-radius:20px; border:2px solid #bbb; background:#fff; cursor:pointer;
+    font-size:1em; font-weight:bold; color:#555; transition:all 0.15s;
+  }
+  .axis-btn:hover { border-color:#5b3aa0; }
+  .axis-btn.active { background:#5b3aa0; border-color:#5b3aa0; color:#fff; }
+
+  .stage {
+    background:#fff; border-radius:20px; padding:24px; box-shadow:0 6px 18px rgba(0,0,0,0.1);
+    display:flex; flex-direction:column; align-items:center; gap:14px;
+  }
+  .shape-wrap {
+    position:relative; width:300px; height:300px; perspective: 900px;
+  }
+  .axis-svg {
+    position:absolute; top:0; left:0; width:100%; height:100%; z-index:5; pointer-events:none;
+  }
+  .axis-label {
+    position:absolute; top:-6px; left:50%; transform:translate(-50%,-100%);
+    color:#e74c3c; font-weight:bold; font-size:0.95em; white-space:nowrap; z-index:5;
+  }
+  .half {
+    position:absolute; top:0; left:0; width:100%; height:100%;
+    backface-visibility: visible; transform-style: preserve-3d;
+    transition: transform 1.3s cubic-bezier(.4,.2,.2,1);
+  }
+  .half-a { z-index:2; }
+  .half-b { z-index:3; }
+
+  .controls { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
+  button.action {
+    padding:12px 26px; font-size:1.15em; border:none; border-radius:30px; cursor:pointer;
+    font-weight:bold; color:#fff; box-shadow:0 3px 8px rgba(0,0,0,0.15); transition:transform 0.1s;
+  }
+  button.action:active { transform:scale(0.96); }
+  .btn-fold { background:#5b3aa0; }
+  .btn-reset { background:#7f8c8d; }
+  .btn-yes { background:#27ae60; }
+  .btn-no { background:#c0392b; }
+
+  .result {
+    font-size:1.4em; font-weight:bold; min-height:1.6em; text-align:center;
+  }
+  .result.yes { color:#27ae60; }
+  .result.no { color:#c0392b; }
+
+  .quiz-score { text-align:center; font-size:1.2em; margin-bottom:10px; color:#5b3aa0; font-weight:bold;}
+  .quiz-question { text-align:center; font-size:1.3em; margin-bottom:14px; }
+  .footer-note { text-align:center; color:#888; margin-top:24px; font-size:0.95em; }
+</style>
+</head>
+<body>
+
+<h1>🪞 Axis of Symmetry</h1>
+<p class="subtitle">Fold & See! — Try folding along different lines to see which halves match perfectly</p>
+
+<div class="intro">
+  <b>Axis of Symmetry</b> is a line that divides a shape into 2 equal halves.
+  If you fold along this line and both sides <b>overlap perfectly</b>, that line is an axis of symmetry for the shape! 🎉<br>
+  Some shapes have <b>more than one axis</b> of symmetry — for example, an isosceles triangle has 1, a rectangle has 2,
+  an equilateral triangle has 3, and a square has as many as 4! Try selecting different fold lines and see for yourself.
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="explore">🔍 Explore Mode</button>
+  <button class="tab-btn" data-tab="quiz">🎯 Quiz Mode</button>
+</div>
+
+<!-- EXPLORE PANEL -->
+<div class="panel active" id="panel-explore">
+  <div class="selector" id="explore-selector"></div>
+  <div class="axis-selector" id="explore-axis-selector"></div>
+  <div class="stage">
+    <div class="shape-wrap" id="explore-stage"></div>
+    <div class="controls">
+      <button class="action btn-fold" onclick="foldExplore()">🫴 Fold It!</button>
+      <button class="action btn-reset" onclick="resetExplore()">↩️ Unfold</button>
+    </div>
+    <div class="result" id="explore-result"></div>
+  </div>
+</div>
+
+<!-- QUIZ PANEL -->
+<div class="panel" id="panel-quiz">
+  <div class="quiz-score">Score: <span id="quiz-score">0</span> / <span id="quiz-total">0</span></div>
+  <div class="quiz-question">Does this shape have an axis of symmetry? 🤔</div>
+  <div class="stage">
+    <div class="shape-wrap" id="quiz-stage"></div>
+    <div class="controls" id="quiz-guess-controls">
+      <button class="action btn-yes" onclick="quizGuess(true)">✅ Has Axis of Symmetry</button>
+      <button class="action btn-no" onclick="quizGuess(false)">❌ No Axis</button>
+    </div>
+    <div class="controls" id="quiz-fold-controls" style="display:none;">
+      <button class="action btn-fold" onclick="foldQuiz()">🫴 Fold to Check Answer</button>
+      <button class="action btn-reset" onclick="nextQuiz()">➡️ Next Question</button>
+    </div>
+    <div class="result" id="quiz-result"></div>
+  </div>
+</div>
+
+<p class="footer-note">💡 The red dashed line is the axis being tested — if the shape overlaps perfectly after folding, that line is a true axis of symmetry</p>
+
+<script>
+const BOX = 300;
+
+// ---- General axis geometry engine ----
+function boxParam(x, y) {
+  const eps = 0.01;
+  if (Math.abs(y - 0) < eps) return x;
+  if (Math.abs(x - BOX) < eps) return BOX + y;
+  if (Math.abs(y - BOX) < eps) return 2*BOX + (BOX - x);
+  if (Math.abs(x - 0) < eps) return 3*BOX + (BOX - y);
+  return null;
+}
+
+function computeAxisGeometry(pivot, angleDeg) {
+  const rad = angleDeg * Math.PI / 180;
+  const dx = Math.sin(rad), dy = Math.cos(rad);
+  const px = pivot.x, py = pivot.y;
+  let candidates = [];
+  function tryEdge(x, y, t) {
+    if (x >= -0.5 && x <= BOX+0.5 && y >= -0.5 && y <= BOX+0.5) {
+      candidates.push({x: Math.min(Math.max(x,0),BOX), y: Math.min(Math.max(y,0),BOX), t});
+    }
+  }
+  if (Math.abs(dx) > 1e-9) {
+    let t = (0-px)/dx; tryEdge(0, py+t*dy, t);
+    t = (BOX-px)/dx; tryEdge(BOX, py+t*dy, t);
+  }
+  if (Math.abs(dy) > 1e-9) {
+    let t = (0-py)/dy; tryEdge(px+t*dx, 0, t);
+    t = (BOX-py)/dy; tryEdge(px+t*dx, BOX, t);
+  }
+  candidates.sort((a,b)=>a.t-b.t);
+  let uniq = [];
+  candidates.forEach(c=>{
+    if (!uniq.some(u=>Math.abs(u.x-c.x)<0.5 && Math.abs(u.y-c.y)<0.5)) uniq.push(c);
+  });
+  let P1 = uniq[0], P2 = uniq[uniq.length-1];
+
+  let s1 = boxParam(P1.x,P1.y), s2 = boxParam(P2.x,P2.y);
+  if (s1 > s2) { [s1,s2]=[s2,s1]; [P1,P2]=[P2,P1]; }
+
+  const corners = [{x:0,y:0},{x:BOX,y:0},{x:BOX,y:BOX},{x:0,y:BOX}]
+    .map(c => ({...c, s: boxParam(c.x,c.y)}));
+
+  const between = corners.filter(c => c.s > s1+0.01 && c.s < s2-0.01).sort((a,b)=>a.s-b.s);
+  const outside = corners.filter(c => !(c.s > s1+0.01 && c.s < s2-0.01)).sort((a,b)=>{
+    const sa = a.s < s1 ? a.s + 4*BOX : a.s;
+    const sb = b.s < s1 ? b.s + 4*BOX : b.s;
+    return sa - sb;
+  });
+
+  const polyA = [P1, ...between, P2];
+  const polyB = [P2, ...outside, P1];
+
+  const toClip = pts => 'polygon(' + pts.map(p => `${(p.x/BOX*100).toFixed(2)}% ${(p.y/BOX*100).toFixed(2)}%`).join(', ') + ')';
+
+  return {
+    line: {x1:P1.x, y1:P1.y, x2:P2.x, y2:P2.y},
+    clipA: toClip(polyA),
+    clipB: toClip(polyB),
+    fold: `rotate3d(${dx.toFixed(4)}, ${dy.toFixed(4)}, 0, 180deg)`,
+    origin: `${pivot.x}px ${pivot.y}px`
+  };
+}
+
+// ---- Helpers for regular polygons ----
+function regularPolygonPoints(n, cx, cy, r) {
+  let pts = [];
+  for (let k = 0; k < n; k++) {
+    const theta = k * (360 / n) * Math.PI / 180;
+    const x = cx + r * Math.sin(theta);
+    const y = cy - r * Math.cos(theta);
+    pts.push(`${x.toFixed(2)},${y.toFixed(2)}`);
+  }
+  return pts.join(' ');
+}
+function regularPolygonAxes(n) {
+  let opts = [];
+  for (let k = 0; k < n; k++) {
+    const angle = parseFloat((k * (180 / n)).toFixed(2));
+    opts.push({angle, name: `${angle.toFixed(1)}°`});
+  }
+  return opts;
+}
+
+// ---- Shape definitions ----
+const CENTER = {x:150, y:150};
+const TRI_EQ_PIVOT = {x:150, y:(65+238.2+238.2)/3};
+
+const shapes = {
+  circle: {
+    icon:'●', label:'Circle (infinite axes)', pivot:CENTER, axis:0, validAxes:[0,30,45,60,90,120,135,150],
+    axisOptions: [
+      {angle:0, name:'0° (Vertical)'},
+      {angle:30, name:'30°'},
+      {angle:45, name:'45°'},
+      {angle:60, name:'60°'},
+      {angle:90, name:'90° (Horizontal)'},
+      {angle:120, name:'120°'},
+      {angle:135, name:'135°'},
+      {angle:150, name:'150°'}
+    ],
+    svg:'<circle cx="150" cy="150" r="100" fill="#3498db"/>'
+  },
+  heart: {
+    icon:'❤', label:'Heart (1 axis)', pivot:CENTER, axis:0, validAxes:[0],
+    svg:'<path d="M150,240 C150,240 40,160 40,100 C40,60 75,40 105,55 C125,65 140,85 150,110 C160,85 175,65 195,55 C225,40 260,60 260,100 C260,160 150,240 150,240 Z" fill="#e74c3c"/>'
+  },
+  star: {
+    icon:'★', label:'5-Point Star (5 axes)', pivot:CENTER, axis:0,
+    validAxes: regularPolygonAxes(5).map(o=>o.angle),
+    axisOptions: regularPolygonAxes(5),
+    svg:'<polygon points="150,50 179,121 255,121 193,165 216,236 150,190 84,236 107,165 45,121 121,121" fill="#f1c40f"/>'
+  },
+  triIso: {
+    icon:'▲', label:'Isosceles Triangle (1 axis)', pivot:CENTER, axis:0, validAxes:[0],
+    svg:'<polygon points="150,60 60,240 240,240" fill="#9b59b6"/>'
+  },
+  triEq: {
+    icon:'△', label:'Equilateral Triangle (3 axes)', pivot:TRI_EQ_PIVOT, axis:0, validAxes:[0,60,120],
+    axisOptions: [
+      {angle:0, name:'Axis 1 (through apex)'},
+      {angle:60, name:'Axis 2'},
+      {angle:120, name:'Axis 3'}
+    ],
+    svg:'<polygon points="150,65 50,238.2 250,238.2" fill="#e67e22"/>'
+  },
+  rectangle: {
+    icon:'▬', label:'Rectangle (2 axes)', pivot:CENTER, axis:0, validAxes:[0,90],
+    svg:'<rect x="30" y="95" width="240" height="110" fill="#1abc9c"/>'
+  },
+  square: {
+    icon:'■', label:'Square (4 axes)', pivot:CENTER, axis:0, validAxes:[0,45,90,135],
+    svg:'<rect x="50" y="50" width="200" height="200" fill="#2ecc71"/>'
+  },
+  hexagon: {
+    icon:'⬡', label:'Regular Hexagon (6 axes)', pivot:CENTER, axis:0,
+    validAxes: regularPolygonAxes(6).map(o=>o.angle),
+    axisOptions: regularPolygonAxes(6),
+    svg: `<polygon points="${regularPolygonPoints(6,150,150,105)}" fill="#8e44ad"/>`
+  },
+  heptagon: {
+    icon:'⬠', label:'Regular Heptagon (7 axes)', pivot:CENTER, axis:0,
+    validAxes: regularPolygonAxes(7).map(o=>o.angle),
+    axisOptions: regularPolygonAxes(7),
+    svg: `<polygon points="${regularPolygonPoints(7,150,150,105)}" fill="#2980b9"/>`
+  },
+  octagon: {
+    icon:'⯃', label:'Regular Octagon (8 axes)', pivot:CENTER, axis:0,
+    validAxes: regularPolygonAxes(8).map(o=>o.angle),
+    axisOptions: regularPolygonAxes(8),
+    svg: `<polygon points="${regularPolygonPoints(8,150,150,105)}" fill="#c0392b"/>`
+  },
+  bracketC: {
+    icon:'C', label:'Letter C (1 axis)', pivot:CENTER, axis:90, validAxes:[90],
+    svg:'<rect x="90" y="60" width="140" height="180" fill="#f39c12"/><rect x="150" y="90" width="90" height="120" fill="#ffffff"/>'
+  },
+  letterL: {
+    icon:'L', label:'Letter L (0 axes)', pivot:CENTER, axis:90, validAxes:[],
+    svg:'<polygon points="90,60 130,60 130,200 220,200 220,240 90,240" fill="#d35400"/>'
+  },
+  parallelogram: {
+    icon:'▱', label:'Parallelogram (0 axes)', pivot:CENTER, axis:0, validAxes:[],
+    svg:'<polygon points="90,80 250,80 210,220 50,220" fill="#e84393"/>'
+  },
+  triRight: {
+    icon:'◺', label:'Right Triangle (0 axes)', pivot:CENTER, axis:0, validAxes:[],
+    svg:'<polygon points="70,240 230,240 70,60" fill="#16a085"/>'
+  },
+  pentagonIrregular: {
+    icon:'⬟', label:'Irregular Pentagon (0 axes)', pivot:CENTER, axis:0, validAxes:[],
+    svg:'<polygon points="150,60 235,115 205,225 85,215 65,105" fill="#7f8c8d"/>'
+  }
+};
+
+const DEFAULT_AXIS_OPTIONS = [
+  {angle:0, name:'Vertical'},
+  {angle:45, name:'Diagonal ╲'},
+  {angle:90, name:'Horizontal'},
+  {angle:135, name:'Diagonal ╱'}
+];
+
+function getAxisOptions(shapeKey) {
+  return shapes[shapeKey].axisOptions || DEFAULT_AXIS_OPTIONS;
+}
+
+function buildStageHTML(key, angle) {
+  const s = shapes[key];
+  const geo = computeAxisGeometry(s.pivot, angle);
+  const opts = getAxisOptions(key);
+  const optLabel = (opts.find(o=>o.angle===angle) || {}).name || (angle+'°');
+  return `
+    <div class="axis-label">Testing axis: ${optLabel}</div>
+    <svg class="axis-svg" viewBox="0 0 300 300">
+      <line x1="${geo.line.x1}" y1="${geo.line.y1}" x2="${geo.line.x2}" y2="${geo.line.y2}"
+        stroke="#e74c3c" stroke-width="3" stroke-dasharray="8 6"/>
+    </svg>
+    <svg class="half half-a" viewBox="0 0 300 300" style="clip-path:${geo.clipA};">${s.svg}</svg>
+    <svg class="half half-b" viewBox="0 0 300 300" style="clip-path:${geo.clipB}; transform-origin:${geo.origin};" data-fold="${geo.fold}">${s.svg}</svg>
+  `;
+}
+
+function setFolded(stageEl, folded) {
+  const halfB = stageEl.querySelector('.half-b');
+  halfB.style.transform = folded ? halfB.dataset.fold : 'none';
+}
+
+// ---------- EXPLORE MODE ----------
+let currentExploreKey = 'triEq';
+let currentExploreAngle = 0;
+
+function renderExploreSelector() {
+  const sel = document.getElementById('explore-selector');
+  sel.innerHTML = '';
+  Object.keys(shapes).forEach(key => {
+    const btn = document.createElement('button');
+    btn.className = 'shape-btn' + (key === currentExploreKey ? ' active' : '');
+    btn.textContent = shapes[key].icon;
+    btn.title = shapes[key].label;
+    btn.onclick = () => {
+      currentExploreKey = key;
+      currentExploreAngle = getAxisOptions(key)[0].angle;
+      loadExplore();
+    };
+    sel.appendChild(btn);
+  });
+}
+
+function renderAxisSelector() {
+  const sel = document.getElementById('explore-axis-selector');
+  sel.innerHTML = '';
+  getAxisOptions(currentExploreKey).forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'axis-btn' + (opt.angle === currentExploreAngle ? ' active' : '');
+    btn.textContent = opt.name;
+    btn.onclick = () => { currentExploreAngle = opt.angle; loadExplore(); };
+    sel.appendChild(btn);
+  });
+}
+
+function loadExplore() {
+  const stage = document.getElementById('explore-stage');
+  stage.innerHTML = buildStageHTML(currentExploreKey, currentExploreAngle);
+  document.getElementById('explore-result').textContent = '';
+  document.getElementById('explore-result').className = 'result';
+  renderExploreSelector();
+  renderAxisSelector();
+}
+
+function foldExplore() {
+  const stage = document.getElementById('explore-stage');
+  setFolded(stage, true);
+  const s = shapes[currentExploreKey];
+  const isValid = s.validAxes.includes(currentExploreAngle);
+  setTimeout(() => {
+    const res = document.getElementById('explore-result');
+    if (isValid) {
+      res.textContent = '✅ Perfect overlap! This line IS an axis of symmetry for this shape.';
+      res.className = 'result yes';
+    } else {
+      res.textContent = '❌ Halves don\'t match! This line is NOT an axis of symmetry.';
+      res.className = 'result no';
+    }
+  }, 1300);
+}
+
+function resetExplore() {
+  const stage = document.getElementById('explore-stage');
+  setFolded(stage, false);
+  document.getElementById('explore-result').textContent = '';
+  document.getElementById('explore-result').className = 'result';
+}
+
+// ---------- QUIZ MODE ----------
+let quizKey = null;
+let score = 0, total = 0;
+let quizKeys = Object.keys(shapes);
+let quizQueue = [];
+
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function nextQuiz() {
+  if (quizQueue.length === 0) quizQueue = shuffleArray([...quizKeys]);
+  quizKey = quizQueue.pop();
+  const stage = document.getElementById('quiz-stage');
+  stage.innerHTML = buildStageHTML(quizKey, shapes[quizKey].axis);
+  stage.querySelector('.axis-svg').style.visibility = 'hidden';
+  stage.querySelector('.axis-label').style.visibility = 'hidden';
+  document.getElementById('quiz-result').textContent = '';
+  document.getElementById('quiz-result').className = 'result';
+  document.getElementById('quiz-guess-controls').style.display = 'flex';
+  document.getElementById('quiz-fold-controls').style.display = 'none';
+}
+
+function quizGuess(guessSymmetric) {
+  total++;
+  const hasAxis = shapes[quizKey].validAxes.length > 0;
+  const correct = hasAxis === guessSymmetric;
+  if (correct) score++;
+  document.getElementById('quiz-score').textContent = score;
+  document.getElementById('quiz-total').textContent = total;
+
+  const res = document.getElementById('quiz-result');
+  res.textContent = correct ? '🎉 Correct! Click "Fold to Check Answer" to see it in action.' : '🤨 Let\'s check the answer together — click "Fold to Check Answer"';
+  res.className = 'result ' + (correct ? 'yes' : 'no');
+
+  document.getElementById('quiz-guess-controls').style.display = 'none';
+  document.getElementById('quiz-fold-controls').style.display = 'flex';
+  const stage = document.getElementById('quiz-stage');
+  stage.querySelector('.axis-svg').style.visibility = 'visible';
+  stage.querySelector('.axis-label').style.visibility = 'visible';
+}
+
+function foldQuiz() {
+  const stage = document.getElementById('quiz-stage');
+  setFolded(stage, true);
+  const s = shapes[quizKey];
+  const isValid = s.validAxes.includes(s.axis);
+  setTimeout(() => {
+    const res = document.getElementById('quiz-result');
+    res.textContent = isValid
+      ? '✅ Perfect overlap! This shape truly has an axis of symmetry.'
+      : '❌ Halves don\'t match! This shape has no axis of symmetry.';
+    res.className = 'result ' + (isValid ? 'yes' : 'no');
+  }, 1300);
+}
+
+// ---------- TABS ----------
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+  };
+});
+
+// init
+loadExplore();
+nextQuiz();
+</script>
+
+</body>
+</html>
